@@ -1,6 +1,4 @@
-Here’s the updated README file with the live demo link included:
 
-```markdown
 # Streak Maker
 
 Streak Maker is a simple web application that allows users to create and manage their streaks, visually represented in a horizontal streak format similar to GitHub. Users can add text notes for their activities, delete them, and view their streaks with the corresponding dates on hover.
