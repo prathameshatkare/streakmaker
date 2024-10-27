@@ -193,6 +193,18 @@
         let currentStreak = 0;
         let totalActiveDays = 0;
 
+        // Load streak data from localStorage
+        function loadStreakData() {
+            const streakData = JSON.parse(localStorage.getItem('streakData')) || [];
+            streakData.forEach(dateString => {
+                const box = document.querySelector(`.streak-box[data-date="${dateString}"]`);
+                if (box) {
+                    box.classList.add('active');
+                }
+            });
+            updateCounts();
+        }
+
         for (let i = 0; i < daysInYear; i++) {
             const streakBox = document.createElement('div');
             streakBox.classList.add('streak-box');
@@ -203,29 +215,96 @@
 
             streakBox.addEventListener('click', () => {
                 streakBox.classList.toggle('active');
+                const streakData = JSON.parse(localStorage.getItem('streakData')) || [];
+                if (streakBox.classList.contains('active')) {
+                    streakData.push(dateString);
+                } else {
+                    const index = streakData.indexOf(dateString);
+                    if (index > -1) {
+                        streakData.splice(index, 1);
+                    }
+                }
+                localStorage.setItem('streakData', JSON.stringify(streakData));
                 updateCounts();
             });
 
             streakContainer.appendChild(streakBox);
         }
 
+        // Load learning history from localStorage
+        function loadLearningHistory() {
+            const historyData = JSON.parse(localStorage.getItem('historyData')) || [];
+            historyData.forEach(({ date, note }) => {
+                addHistoryItem(date, note);
+            });
+        }
+
+        // Add a history item
+        function addHistoryItem(date, note) {
+            const historyItem = document.createElement('div');
+            historyItem.classList.add('history-item');
+            historyItem.innerHTML = `<span class="history-date">${date}</span>
+                                     <div class="history-note">${note}</div>
+                                     <button class="edit-note">Edit</button>
+                                     <button class="save-edit" style="display:none;">Save</button>`;
+            historyList.appendChild(historyItem);
+
+            const editButton = historyItem.querySelector('.edit-note');
+            const saveButton = historyItem.querySelector('.save-edit');
+
+            editButton.addEventListener('click', () => {
+                const noteDiv = historyItem.querySelector('.history-note');
+                noteDiv.contentEditable = true;
+                noteDiv.focus();
+                editButton.style.display = 'none';
+                saveButton.style.display = 'inline';
+            });
+
+            saveButton.addEventListener('click', () => {
+                const noteDiv = historyItem.querySelector('.history-note');
+                noteDiv.contentEditable = false;
+                editButton.style.display = 'inline';
+                saveButton.style.display = 'none';
+                updateHistoryData();
+            });
+        }
+
+        // Update history data in localStorage
+        function updateHistoryData() {
+            const historyData = [];
+            document.querySelectorAll('.history-item').forEach(item => {
+                const date = item.querySelector('.history-date').innerText;
+                const note = item.querySelector('.history-note').innerText;
+                historyData.push({ date, note });
+            });
+            localStorage.setItem('historyData', JSON.stringify(historyData));
+        }
+
+        // Save learning input
+        saveLearningButton.addEventListener('click', () => {
+            const note = learningInput.value.trim();
+            if (note) {
+                const date = formatDate(today);
+                addHistoryItem(date, note);
+                learningInput.value = '';
+                updateHistoryData();
+            }
+        });
+
+        // Update counts based on active streak boxes
         function updateCounts() {
-            const boxes = Array.from(document.querySelectorAll('.streak-box'));
+            const activeBoxes = Array.from(document.querySelectorAll('.streak-box.active'));
             let streak = 0;
             let total = 0;
             let inStreak = false;
 
-            boxes.reverse().forEach(box => {
-                if (box.classList.contains('active')) {
-                    total++;
-                    if (inStreak) {
-                        streak++;
-                    } else {
-                        inStreak = true;
-                        streak = 1;
-                    }
+            activeBoxes.forEach(box => {
+                total++;
+                if (inStreak) {
+                    streak++;
                 } else {
-                    inStreak = false;
+                    inStreak = true;
+                    streak = 1;
                 }
             });
 
@@ -235,80 +314,20 @@
             totalCountDisplay.textContent = `Total Active Days: ${totalActiveDays}`;
         }
 
+        // Reset streak data
         resetButton.addEventListener('click', () => {
-            if (confirm("Are you sure you want to reset your streak?")) {
-                localStorage.removeItem('streakData');
-                document.querySelectorAll('.streak-box').forEach(box => box.classList.remove('active'));
-                updateCounts();
-            }
+            localStorage.removeItem('streakData');
+            localStorage.removeItem('historyData');
+            document.querySelectorAll('.streak-box').forEach(box => box.classList.remove('active'));
+            historyList.innerHTML = '';
+            currentStreak = 0;
+            totalActiveDays = 0;
+            updateCounts();
         });
 
-        function loadLearningHistory() {
-            const learningHistory = JSON.parse(localStorage.getItem('learningHistory') || '[]');
-            learningHistory.forEach(entry => addHistoryItem(entry.date, entry.text));
-        }
-
-        function addHistoryItem(date, text) {
-            const historyItem = document.createElement('div');
-            historyItem.classList.add('history-item');
-            const noteDisplay = document.createElement('div');
-            noteDisplay.classList.add('history-note');
-            noteDisplay.textContent = text;
-
-            const editButton = document.createElement('button');
-            editButton.classList.add('edit-note');
-            editButton.textContent = "Edit";
-
-            editButton.addEventListener('click', () => {
-                const editableText = document.createElement('textarea');
-                editableText.value = text;
-                const saveButton = document.createElement('button');
-                saveButton.classList.add('save-edit');
-                saveButton.textContent = "Save";
-
-                historyItem.replaceChild(editableText, noteDisplay);
-                historyItem.appendChild(saveButton);
-                editButton.style.display = 'none';
-
-                saveButton.addEventListener('click', () => {
-                    const newText = editableText.value;
-                    const learningHistory = JSON.parse(localStorage.getItem('learningHistory') || '[]');
-                    const index = learningHistory.findIndex(entry => entry.date === date && entry.text === text);
-
-                    if (index !== -1) {
-                        learningHistory[index].text = newText;
-                        localStorage.setItem('learningHistory', JSON.stringify(learningHistory));
-                        noteDisplay.textContent = newText;
-                        historyItem.replaceChild(noteDisplay, editableText);
-                        saveButton.remove();
-                        editButton.style.display = 'inline';
-                        alert("Learning note updated!");
-                    }
-                });
-            });
-
-            historyItem.innerHTML = `<div class="history-date">${date}</div>`;
-            historyItem.appendChild(noteDisplay);
-            historyItem.appendChild(editButton);
-            historyList.appendChild(historyItem);
-        }
-
-        saveLearningButton.addEventListener('click', () => {
-            const learningText = learningInput.value.trim();
-            if (learningText) {
-                const date = formatDate(today);
-                const learningHistory = JSON.parse(localStorage.getItem('learningHistory') || '[]');
-                learningHistory.push({ date, text: learningText });
-                localStorage.setItem('learningHistory', JSON.stringify(learningHistory));
-                addHistoryItem(date, learningText);
-                learningInput.value = ''; // Clear the input
-            } else {
-                alert("Please enter a learning note.");
-            }
-        });
-
+        // On load
         loadLearningHistory();
-        updateCounts();
+        loadStreakData();
     </script>
 </body>
 </html>
