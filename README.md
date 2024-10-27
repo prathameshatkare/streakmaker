@@ -1,7 +1,7 @@
 
 # Streak Maker
 
-![Streak Maker](https://via.placeholder.com/800x200) <!-- Optional: Add a project banner image -->
+![Streak Maker]((https://prathameshatkare.github.io/streakmaker/)) <!-- Optional: Add a project banner image -->
 
 ## Overview
 
